@@ -22,29 +22,28 @@ void IrisComponent::setup() {
   this->rx_->register_listener(this);
 }
 
-void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
-
-    static const int MARK = 105;   // 1-bit high
-    static const int SPACE = 104;  // 1-bit low
-    static const int REPEAT_COUNT = 6;
+// Static helper to build accumulated pulse vector
+static std::vector<int> build_frame(uint16_t address, esphome::iris::IrisCommand cmd, esphome::iris::IrisMode mode) {
+    static const int MARK = 105;
+    static const int SPACE = 104;
 
     uint8_t frame[12] = {
-        0xAA, 0xAA, 0xAA, 0xAA,
-        0x2D, 0xD4,
-        0x00, 0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00
+        0xAA, 0xAA, 0xAA, 0xAA, // header / sync
+        0x2D, 0xD4,             // payload start
+        0x00, 0x00,             // address MSB, LSB
+        0x00,                   // reserved / payload
+        0x00,                   // command
+        0x00,                   // mode
+        0x00                    // checksum
     };
 
-    frame[6] = (this->address_ >> 8) & 0xFF;
-    frame[7] = this->address_ & 0xFF;
+    // Fill address, command, mode
+    frame[6]  = (address >> 8) & 0xFF;
+    frame[7]  = address & 0xFF;
     frame[9]  = static_cast<uint8_t>(cmd);
     frame[10] = static_cast<uint8_t>(mode);
 
-    // checksum
+    // Calculate checksum over bytes 4..10
     unsigned int sum = 0;
     for (int i = 4; i <= 10; i++) sum += frame[i];
     frame[11] = static_cast<uint8_t>(-sum);
@@ -54,7 +53,7 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     for (auto b : frame) oss << std::hex << std::uppercase << (int)b << " ";
     ESP_LOGD(TAG, "Frame: %s", oss.str().c_str());
 
-    // Build accumulated pulse vector first
+    // Build accumulated pulse vector
     std::vector<int> DataVector;
     int accumulated = 0;
     int last_sign = 0;
@@ -84,7 +83,19 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     for (auto val : DataVector) voss << val << ", ";
     ESP_LOGD(TAG, "DataVector: %s", voss.str().c_str());
 
-    // Transmit vector
+    return DataVector;
+}
+
+// Send command function
+void esphome::iris::IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
+    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+
+    static const int REPEAT_COUNT = 6;
+
+    // Build pulse vector
+    auto DataVector = build_frame(this->address_, cmd, mode);
+
+    // Transmit
     auto call = this->tx_->transmit();
     remote_base::RemoteTransmitData* dst = call.get_data();
 
