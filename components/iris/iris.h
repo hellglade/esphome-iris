@@ -1,33 +1,41 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/components/remote_transmitter/remote_transmitter.h"
 #include "esphome/components/remote_receiver/remote_receiver.h"
 #include "esphome/components/gpio/gpio.h"
+
 #include <vector>
 
 namespace esphome {
 namespace iris {
 
 enum IrisCommand : uint16_t {
-    IRIS_POWER = 0x11,
-    IRIS_BLUE = 0x21,
-    IRIS_MAGENTA = 0x22,
-    IRIS_RED = 0x23,
-    IRIS_LIME = 0x24,
-    IRIS_GREEN = 0x25,
-    IRIS_AQUA = 0x26,
-    IRIS_WHITE = 0x27,
-    IRIS_MODE1 = 0x31,
-    IRIS_MODE2 = 0x32,
-    IRIS_MODE3 = 0x33,
-    IRIS_MODE4 = 0x34,
-    IRIS_BRIGHTNESS = 0x41,
+    IRIS_POWER = 0X11,
+    IRIS_BLUE = 0X21,
+    IRIS_MAGENTA = 0X22,
+    IRIS_RED = 0X23,
+    IRIS_LIME = 0X24,
+    IRIS_GREEN = 0X25,
+    IRIS_AQUA = 0X26,
+    IRIS_WHITE = 0X27,
+    IRIS_MODE1 = 0X31,
+    IRIS_MODE2 = 0X32,
+    IRIS_MODE3 = 0X33,
+    IRIS_MODE4 = 0X34,
+    IRIS_BRIGHTNESS = 0X41,
 };
 
 enum IrisMode : uint16_t {
-    IRIS_POOL = 0x01,
-    IRIS_SPA = 0x02,
-    IRIS_POOLSPA = 0x03,
+    IRIS_POOL = 0X01,
+    IRIS_SPA = 0X02,
+    IRIS_POOLSPA = 0X03,
+};
+
+class IrisSensor {
+ public:
+  virtual void update_sunny(uint16_t address, bool value) {}
+  virtual void update_windy(uint16_t address, bool value) {}
 };
 
 class IrisComponent : public Component, public remote_base::RemoteReceiverListener {
@@ -38,21 +46,27 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
 
-  // Core command function
   void send_command(IrisCommand cmd, IrisMode mode);
 
-  // Setters
-  void set_rx(remote_base::RemoteReceiverComponent *rx) { this->rx_ = rx; }
+  void set_tx(remote_transmitter::RemoteTransmitterComponent *tx) { this->tx_ = tx; }
+  void set_rx(remote_receiver::RemoteReceiverComponent *rx) { this->rx_ = rx; }
+  void set_tx_custom(gpio::GPIOPin *pin) { this->tx_pin_ = pin; }
+
   void set_address(uint16_t address) { this->address_ = address; }
-  void set_tx_custom(esphome::gpio::GPIOPin *pin) { this->tx_pin_ = pin; }
+  void set_command(IrisCommand command) { this->command_ = command; }
+  void set_mode(IrisMode mode) { this->mode_ = mode; }
+
+  void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
 
  protected:
-  remote_base::RemoteReceiverComponent *rx_{nullptr};
-  gpio::GPIOPin *tx_pin_{nullptr};
-  uint16_t address_{0};
+  remote_transmitter::RemoteTransmitterComponent *tx_{nullptr};
+  remote_receiver::RemoteReceiverComponent *rx_{nullptr};
+  gpio::GPIOPin *tx_pin_{nullptr};  // Custom GPIO pin for raw transmit
 
-  // Build pulse timings
-  std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode mode);
+  uint16_t address_{0};
+  IrisCommand command_{IRIS_POWER};
+  IrisMode mode_{IRIS_POOL};
+  std::vector<IrisSensor *> sensors_;
 };
 
 }  // namespace iris
