@@ -74,96 +74,60 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 }
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-  std::vector<uint8_t> received_bytes;
-
-  // Expected bits: 12 bytes * 8 bits = 96 bits
-  const int expected_bits = 12 * 8;
-
-  // Helper lambda for approximate timing check
-  auto is_approx = [](int value, int expected, int tolerance = 15) {
-    return std::abs(value - expected) <= tolerance;
-  };
-
-  // Extract MARK/SPACE durations into a flat vector
-  std::vector<int> timings;
-  for (const auto &item : data.items) {
-    if (item.type == remote_base::ITEM_TYPE_MARK || item.type == remote_base::ITEM_TYPE_SPACE) {
-      timings.push_back(item.duration);
+  uint8_t sync_count = 0;
+  while (data.is_valid()) {
+    while (data.expect_item(SYMBOL * 4, SYMBOL * 4)) {
+      sync_count++;
     }
-  }
-
-  // Check that we have enough data (each bit uses 2 durations)
-  if (timings.size() < expected_bits * 2) {
-    ESP_LOGW(TAG, "Not enough raw data: expected at least %d mark/space pairs, got %d",
-             expected_bits, static_cast<int>(timings.size() / 2));
-    return false;
-  }
-
-  std::vector<bool> bits;
-
-  for (size_t i = 0; i + 1 < timings.size() && bits.size() < expected_bits; i += 2) {
-    int mark = timings[i];
-    int space = timings[i + 1];
-
-    // Decode bit by timing:
-    // bit 0 = mark ~105 µs + space ~104 µs
-    // bit 1 = space ~105 µs + mark ~104 µs
-    if (is_approx(mark, 105) && is_approx(space, 104)) {
-      bits.push_back(false); // bit 0
-    } else if (is_approx(space, 105) && is_approx(mark, 104)) {
-      bits.push_back(true);  // bit 1
-    } else {
-      ESP_LOGW(TAG, "Unexpected mark/space timings at index %zu: mark=%d, space=%d", i, mark, space);
-      return false;
+    if (sync_count >= 2 && data.expect_mark(4550)) {
+      break;
     }
+    sync_count = 0;
+    data.advance();
   }
+  if (sync_count < 2) {
+    return true;
+  }
+  data.expect_space(SYMBOL);
 
-  // Pack bits into bytes (MSB first)
-  for (int i = 0; i < expected_bits; i += 8) {
-    uint8_t byte = 0;
-    for (int b = 0; b < 8; b++) {
+  uint8_t frame[7];
+  for (uint8_t &byte : frame) {
+    for (uint32_t i = 0; i < 8; i++) {
       byte <<= 1;
-      if (bits[i + b]) {
+      if (data.expect_mark(SYMBOL) || data.expect_mark(SYMBOL * 2)) {
+        data.expect_space(SYMBOL);
+        byte |= 0;
+      } else if (data.expect_space(SYMBOL) || data.expect_space(SYMBOL * 2)) {
+        data.expect_mark(SYMBOL);
         byte |= 1;
+      } else {
+        return true;
       }
     }
-    received_bytes.push_back(byte);
   }
 
-  if (received_bytes.size() < 12) {
-    ESP_LOGW(TAG, "Decoded bytes less than 12");
-    return false;
+  for (uint8_t i = 6; i >= 1; i--) {
+    frame[i] ^= frame[i - 1];
   }
 
-  // Log header and payload
-  ESP_LOGD(TAG, "Header/Sync: %02X %02X %02X %02X %02X %02X",
-           received_bytes[0], received_bytes[1], received_bytes[2],
-           received_bytes[3], received_bytes[4], received_bytes[5]);
-  ESP_LOGD(TAG, "Payload: %02X %02X %02X %02X %02X %02X",
-           received_bytes[6], received_bytes[7], received_bytes[8],
-           received_bytes[9], received_bytes[10], received_bytes[11]);
-
-  // Validate checksum (two's complement of sum bytes 4..10)
-  unsigned int sum = 0;
-  for (int i = 4; i <= 10; i++) {
-    sum += received_bytes[i];
+  uint8_t crc = 0;
+  for (uint8_t i = 0; i < 7; i++) {
+    crc ^= frame[i];
+    crc ^= frame[i] >> 4;
   }
-  uint8_t checksum = static_cast<uint8_t>(-sum);
-
-  if (checksum != received_bytes[11]) {
-    ESP_LOGW(TAG, "Checksum failed: calculated %02X but received %02X", checksum, received_bytes[11]);
-    return false;
+  if ((crc & 0xF) == 0) {
+    uint8_t command = frame[1] >> 4;
+    uint16_t code = (frame[2] << 8) | frame[3];
+    uint32_t address = (frame[4] << 16) | (frame[5] << 8) | frame[6];
+    ESP_LOGD(TAG, "Received: command: %" PRIx8 ", code: %" PRIu16 ", address %" PRIx32,
+             command, code, address);
+    if (command == IRIS_SENSOR) {
+      for (auto *sensor : this->sensors_) {
+        sensor->update_windy(address, (code & 1) != 0);
+        sensor->update_sunny(address, (code & 2) != 0);
+      }
+    }
   }
-
-  ESP_LOGI(TAG, "Checksum valid, frame received successfully.");
-
-  // Extract command and mode
-  IrisCommand cmd = static_cast<IrisCommand>(received_bytes[9]);
-  IrisMode mode = static_cast<IrisMode>(received_bytes[10]);
-
-  // TODO: Handle received command and mode
-  // Example:
-  // this->handle_command(cmd, mode);
 
   return true;
 }
