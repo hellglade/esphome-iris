@@ -24,7 +24,7 @@ void IrisComponent::setup() {
 
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
   ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
-  
+
   static const int MARK = 105;   // Mark duration (µs)
   static const int SPACE = 104;  // Space duration (µs)
   static const int REPEAT_COUNT = 6; // Total frames to send
@@ -56,6 +56,20 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
   }
   frame[11] = static_cast<uint8_t>(-sum);  // Two’s complement checksum
 
+  void log_frame(const uint8_t *frame, size_t len) {
+    char buf[3 * len + 1];  // "FF " per byte + null terminator
+    char *ptr = buf;
+
+    for (size_t i = 0; i < len; i++) {
+        ptr += sprintf(ptr, "%02X ", frame[i]);
+    }
+
+    ESP_LOGD(TAG, "Frame: %s", buf);
+}
+
+
+  
+  
   auto call = this->tx_->transmit();
   remote_base::RemoteTransmitData *dst = call.get_data();
 
