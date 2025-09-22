@@ -68,25 +68,47 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD("iris", "Frame: %s", buf);
 
 
-  auto call = this->tx_->transmit();
-  remote_base::RemoteTransmitData *dst = call.get_data();
+// Prepare transmit
+    auto call = this->tx_->transmit();
+    remote_base::RemoteTransmitData *dst = call.get_data();
 
-  for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-    for (int i = 0; i < 12; i++) {
-      uint8_t byte = frame[i];
-      for (int bit = 7; bit >= 0; bit--) {
-        bool bit_set = (byte & (1 << bit)) != 0;
-        if (bit_set) {
-          dst->item(MARK, SPACE);
-        } else {
-          dst->item(SPACE, MARK);
+    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
+        int accumulated = 0;
+        int last_sign = 0;
+
+        for (int i = 0; i < 12; i++) {
+            uint8_t byte = frame[i];
+
+            for (int bit = 7; bit >= 0; bit--) {
+                int pulse = (byte & (1 << bit)) ? MARK : -SPACE;
+                int sign = (pulse > 0) ? 1 : -1;
+
+                if (last_sign == 0) {
+                    // first bit
+                    accumulated = pulse;
+                    last_sign = sign;
+                } else if (sign == last_sign) {
+                    // same polarity → accumulate
+                    accumulated += pulse;
+                } else {
+                    // sign change → push previous
+                    dst->item((last_sign > 0) ? accumulated : 0,
+                              (last_sign < 0) ? -accumulated : 0);
+                    accumulated = pulse;
+                    last_sign = sign;
+                }
+            }
         }
-      }
-    }
-    // No space or delay between repeats as requested
-  }
 
-  call.perform();
+        // Push remaining accumulated pulse
+        if (accumulated != 0) {
+            dst->item((last_sign > 0) ? accumulated : 0,
+                      (last_sign < 0) ? -accumulated : 0);
+        }
+    }
+
+    call.perform();
+    ESP_LOGD(TAG, "send_command complete");
 }
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
