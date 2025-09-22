@@ -42,6 +42,7 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
   void send_command(IrisCommand cmd, IrisMode mode, uint32_t repeat = 4);
+  std::vector<int> build_frame(uint16_t address_, IrisCommand command_, IrisMode mode_); // <-- ADD THIS LINE
   void set_tx(remote_transmitter::RemoteTransmitterComponent *tx) { this->tx_ = tx; }
   void set_rx(remote_receiver::RemoteReceiverComponent *rx) { this->rx_ = rx; }
   void set_address(uint16_t address) { this->address_ = address; }
