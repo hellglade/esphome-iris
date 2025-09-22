@@ -88,29 +88,37 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
 
 // Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+    ESP_LOGD(TAG, "send_command (single frame): cmd=%d, mode=%d", cmd, mode);
 
-    static const int REPEAT_COUNT = 6;
+    static const uint32_t MAX_PULSE = 1000; // max safe pulse per item
 
-    // Build pulse vector
+    // Build accumulated pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    // Transmit
     auto call = this->tx_->transmit();
     remote_base::RemoteTransmitData* dst = call.get_data();
 
-    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-        for (auto pulse : DataVector) {
-            if (pulse > 0) {
-                dst->item(static_cast<uint32_t>(pulse), 0);    // HIGH pulse
-            } else {
-                dst->item(0, static_cast<uint32_t>(-pulse));   // LOW pulse
+    // Transmit one frame only
+    for (auto pulse : DataVector) {
+        if (pulse > 0) {
+            uint32_t remaining = static_cast<uint32_t>(pulse);
+            while (remaining > 0) {
+                uint32_t send_mark = (remaining > MAX_PULSE) ? MAX_PULSE : remaining;
+                dst->item(send_mark, 0);
+                remaining -= send_mark;
+            }
+        } else {
+            uint32_t remaining = static_cast<uint32_t>(-pulse);
+            while (remaining > 0) {
+                uint32_t send_space = (remaining > MAX_PULSE) ? MAX_PULSE : remaining;
+                dst->item(0, send_space);
+                remaining -= send_space;
             }
         }
     }
 
     call.perform();
-    ESP_LOGD(TAG, "send_command complete");
+    ESP_LOGD(TAG, "send_command complete (single frame)");
 }
 
 // Receive callback
