@@ -14,7 +14,7 @@ static const int SYMBOL_LOW = -104;
 
 void IrisComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Iris:");
-  ESP_LOGCONFIG(TAG, "  Address: %" PRIx32, this->address_);
+  ESP_LOGCONFIG(TAG, "  Address: %" PRIx16, this->address_);
 }
 
 void IrisComponent::setup() {
@@ -22,7 +22,7 @@ void IrisComponent::setup() {
   this->rx_->register_listener(this);
 }
 
-std::vector<int> IrisComponent::build_frame(uint32_t address_, IrisCommand command_, IrisMode mode_) {
+std::vector<int> IrisComponent::build_frame(uint16_t address_, IrisCommand command_, IrisMode mode_) {
   uint8_t frame[12] = {
       0xAA, 0xAA, 0xAA, 0xAA, // sync
       0x2D, 0xD4,             // sync
@@ -33,8 +33,8 @@ std::vector<int> IrisComponent::build_frame(uint32_t address_, IrisCommand comma
       0x00                    // checksum (calculated below)
   };
 
-  frame[6] = (address_ >> 16) & 0xFF;
-  frame[7] = (address_ >> 8) & 0xFF;
+  frame[6] = (address_ >> 8) & 0xFF;  // high byte → 0xF9
+  frame[7] = address_ & 0xFF;         // low byte  → 0xCB
   frame[9] = static_cast<uint8_t>(command_);
   frame[10] = static_cast<uint8_t>(mode_);
 

@@ -31,8 +31,8 @@ enum IrisMode : uint16_t {
 
 class IrisSensor {
  public:
-  virtual void update_sunny(uint32_t address, bool value) {}
-  virtual void update_windy(uint32_t address, bool value) {}
+  virtual void update_sunny(uint16_t address, bool value) {}
+  virtual void update_windy(uint16_t address, bool value) {}
 };
 
 class IrisComponent : public Component, public remote_base::RemoteReceiverListener {
@@ -44,7 +44,7 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void send_command(IrisCommand cmd, IrisMode mode, uint32_t repeat = 4);
   void set_tx(remote_transmitter::RemoteTransmitterComponent *tx) { this->tx_ = tx; }
   void set_rx(remote_receiver::RemoteReceiverComponent *rx) { this->rx_ = rx; }
-  void set_address(uint32_t address) { this->address_ = address; }
+  void set_address(uint16_t address) { this->address_ = address; }
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
@@ -53,7 +53,7 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   remote_transmitter::RemoteTransmitterComponent *tx_{nullptr};
   remote_receiver::RemoteReceiverComponent *rx_{nullptr};
   ESPPreferenceObject preferences_;
-  uint32_t address_{0};
+  uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
   IrisMode mode_{IRIS_POOL};
   uint32_t repeat_{4};

@@ -51,7 +51,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(
             remote_receiver.RemoteReceiverComponent
         ),
-        cv.Required(CONF_ADDRESS): cv.hex_uint32_t,
+        cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
     }
 )
 
