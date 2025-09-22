@@ -56,20 +56,18 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
   }
   frame[11] = static_cast<uint8_t>(-sum);  // Two’s complement checksum
 
-  void log_frame(const uint8_t *frame, size_t len) {
-    char buf[3 * len + 1];  // "FF " per byte + null terminator
+    // inline logging of frame
+    char buf[3 * sizeof(frame) + 1];  // "FF " per byte + null
     char *ptr = buf;
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < sizeof(frame); i++) {
         ptr += sprintf(ptr, "%02X ", frame[i]);
     }
+    *ptr = '\0';  // null terminate
 
-    ESP_LOGD(TAG, "Frame: %s", buf);
-}
+    ESP_LOGD("iris", "Frame: %s", buf);
 
 
-  
-  
   auto call = this->tx_->transmit();
   remote_base::RemoteTransmitData *dst = call.get_data();
 
