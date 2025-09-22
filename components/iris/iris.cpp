@@ -23,7 +23,8 @@ void IrisComponent::setup() {
 }
 
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-  ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode););
+  ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+  
   static const int MARK = 105;   // Mark duration (µs)
   static const int SPACE = 104;  // Space duration (µs)
   static const int REPEAT_COUNT = 6; // Total frames to send
