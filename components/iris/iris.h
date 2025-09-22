@@ -41,14 +41,13 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void setup() override;
   void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
-  void send_command(IrisCommand cmd, IrisMode mode, uint32_t repeat = 4);
+  void send_command(IrisCommand cmd, IrisMode mode); // repeat removed
   void set_tx(remote_transmitter::RemoteTransmitterComponent *tx) { this->tx_ = tx; }
   void set_rx(remote_receiver::RemoteReceiverComponent *rx) { this->rx_ = rx; }
   void set_address(uint16_t address) { this->address_ = address; }
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
-  void set_repeat(uint32_t repeat) { this->repeat_ = repeat; }
  protected:
   remote_transmitter::RemoteTransmitterComponent *tx_{nullptr};
   remote_receiver::RemoteReceiverComponent *rx_{nullptr};
@@ -56,11 +55,8 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
   IrisMode mode_{IRIS_POOL};
-  uint32_t repeat_{4};
   std::vector<IrisSensor *> sensors_;
 };
 
 }  // namespace iris
 }  // namespace esphome
-
-// test

@@ -12,7 +12,7 @@ CONF_TRANSMITTER_ID = "transmitter_id"
 CONF_RECEIVER_ID = "receiver_id"
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
-CONF_REPEAT = "repeat"
+
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -72,7 +72,6 @@ async def to_code(config):
             cv.Required(CONF_ID): cv.use_id(IrisComponent),
             cv.Required(CONF_COMMAND): cv.templatable(cv.enum(IRIS_COMMAND, upper=True)),
             cv.Required(CONF_MODE): cv.templatable(cv.enum(IRIS_MODE, upper=True)),
-            cv.Optional(CONF_REPEAT): cv.templatable(cv.int_range(min=0, max=5)),
         }
     ),
 )
@@ -83,22 +82,4 @@ async def iris_send_command_to_code(config, action_id, template_arg, args):
     mode = await cg.templatable(config[CONF_MODE], args, IrisMode)
     cg.add(var.set_command(command))
     cg.add(var.set_mode(mode))
-    if CONF_REPEAT in config:
-        repeat = await cg.templatable(config[CONF_REPEAT], args, cg.uint32)
-        cg.add(var.set_repeat(repeat))
     return var
-
-# Remove the following block unless you implement IrisSetCodeAction in C++
-# @automation.register_action(
-#     "iris.set_code",
-#     IrisSetCodeAction,
-#     cv.Schema(
-#         {
-#             cv.Required(CONF_ID): cv.use_id(IrisComponent),
-#         }
-#     ),
-# )
-# async def iris_set_code_to_code(config, action_id, template_arg, args):
-#     paren = await cg.get_variable(config[CONF_ID])
-#     var = cg.new_Pvariable(action_id, template_arg, paren)
-#     return var
