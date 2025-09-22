@@ -54,8 +54,10 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
+  void set_my_transmitter(my_custom_transmitter::MyCustomTransmitter *tx) { this->my_transmitter_ = tx; }
 
  protected:
+  my_custom_transmitter::MyCustomTransmitter *my_transmitter_{nullptr};
   MyCustomTransmitter* tx_{nullptr};
   remote_receiver::RemoteReceiverComponent* rx_{nullptr};
   ESPPreferenceObject preferences_;

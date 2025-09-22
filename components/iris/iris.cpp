@@ -89,30 +89,17 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
 
 // Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+    auto DataVector = build_frame(this->address_, cmd, mode); // your frame builder
 
-    if (!this->tx_) {
-        ESP_LOGE(TAG, "No transmitter set!");
-        return;
+    if (this->my_transmitter_ != nullptr) {
+        // Send full frame via your custom transmitter
+        this->my_transmitter_->send_raw_data(DataVector);
+        ESP_LOGD(TAG, "send_command complete");
+    } else {
+        ESP_LOGE(TAG, "Transmitter not set!");
     }
-
-    const int REPEAT_COUNT = 6;
-    auto DataVector = build_frame(this->address_, cmd, mode); // signed timings
-
-    // Convert to raw_data vector of uint32_t pairs (mark, space)
-    std::vector<uint32_t> raw_data;
-    for (auto pulse : DataVector) {
-        if (pulse > 0) { raw_data.push_back(pulse); raw_data.push_back(0); }
-        else          { raw_data.push_back(0); raw_data.push_back(-pulse); }
-    }
-
-    // Transmit repeated frames
-    for (int i = 0; i < REPEAT_COUNT; i++) {
-        this->tx_->send_raw_data(raw_data);
-    }
-
-    ESP_LOGD(TAG, "send_command complete");
 }
+
 
 // Receive callback
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
