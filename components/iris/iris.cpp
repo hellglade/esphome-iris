@@ -23,93 +23,82 @@ void IrisComponent::setup() {
 }
 
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-  ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
-  static const int MARK = 105;   // Mark duration (µs)
-  static const int SPACE = 104;  // Space duration (µs)
-  static const int REPEAT_COUNT = 6; // Total frames to send
+    static const int MARK = 105;   // 1-bit high
+    static const int SPACE = 104;  // 1-bit low
+    static const int REPEAT_COUNT = 6;
 
-  uint8_t frame[12] = {
-      0xAA, 0xAA, 0xAA, 0xAA, // Header / sync bytes
-      0x2D, 0xD4,             // Payload start
-      0x00, 0x00,             // Address MSB, LSB
-      0x00,                   // Reserved or payload
-      0x00,                   // Command
-      0x00,                   // Mode
-      0x00                    // Checksum
-  };
+    uint8_t frame[12] = {
+        0xAA, 0xAA, 0xAA, 0xAA,
+        0x2D, 0xD4,
+        0x00, 0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00
+    };
 
+    frame[6] = (this->address_ >> 8) & 0xFF;
+    frame[7] = this->address_ & 0xFF;
+    frame[9]  = static_cast<uint8_t>(cmd);
+    frame[10] = static_cast<uint8_t>(mode);
 
+    // checksum
+    unsigned int sum = 0;
+    for (int i = 4; i <= 10; i++) sum += frame[i];
+    frame[11] = static_cast<uint8_t>(-sum);
 
-  // Set address bytes
-  frame[6] = (this->address_ >> 8) & 0xFF;
-  frame[7] = this->address_ & 0xFF;
+    // Log frame
+    std::ostringstream oss;
+    for (auto b : frame) oss << std::hex << std::uppercase << (int)b << " ";
+    ESP_LOGD(TAG, "Frame: %s", oss.str().c_str());
 
-  // Set command and mode
-  frame[9] = static_cast<uint8_t>(cmd);
-  frame[10] = static_cast<uint8_t>(mode);
+    // Build accumulated pulse vector first
+    std::vector<int> DataVector;
+    int accumulated = 0;
+    int last_sign = 0;
 
-  // Calculate checksum over bytes 4 to 10
-  unsigned int sum = 0;
-  for (int i = 4; i <= 10; i++) {
-    sum += frame[i];
-  }
-  frame[11] = static_cast<uint8_t>(-sum);  // Two’s complement checksum
+    for (int i = 0; i < 12; i++) {
+        uint8_t byte = frame[i];
+        for (int bit = 7; bit >= 0; bit--) {
+            int pulse = (byte & (1 << bit)) ? MARK : -SPACE;
+            int sign = (pulse > 0) ? 1 : -1;
 
-    // inline logging of frame
-    char buf[3 * sizeof(frame) + 1];  // "FF " per byte + null
-    char *ptr = buf;
-
-    for (size_t i = 0; i < sizeof(frame); i++) {
-        ptr += sprintf(ptr, "%02X ", frame[i]);
-    }
-    *ptr = '\0';  // null terminate
-
-    ESP_LOGD("iris", "Frame: %s", buf);
-
-
-// Prepare transmit
-    auto call = this->tx_->transmit();
-    remote_base::RemoteTransmitData *dst = call.get_data();
-
-    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-        int accumulated = 0;
-        int last_sign = 0;
-
-        for (int i = 0; i < 12; i++) {
-            uint8_t byte = frame[i];
-
-            for (int bit = 7; bit >= 0; bit--) {
-                int pulse = (byte & (1 << bit)) ? MARK : -SPACE;
-                int sign = (pulse > 0) ? 1 : -1;
-
-                if (last_sign == 0) {
-                    // first bit
-                    accumulated = pulse;
-                    last_sign = sign;
-                } else if (sign == last_sign) {
-                    // same polarity → accumulate
-                    accumulated += pulse;
-                } else {
-                    // sign change → push previous
-                    dst->item((last_sign > 0) ? accumulated : 0,
-                              (last_sign < 0) ? -accumulated : 0);
-                    accumulated = pulse;
-                    last_sign = sign;
-                }
+            if (last_sign == 0) {
+                accumulated = pulse;
+                last_sign = sign;
+            } else if (sign == last_sign) {
+                accumulated += pulse;
+            } else {
+                DataVector.push_back(accumulated);
+                accumulated = pulse;
+                last_sign = sign;
             }
         }
+    }
+    if (accumulated != 0) DataVector.push_back(accumulated);
 
-        // Push remaining accumulated pulse
-        if (accumulated != 0) {
-            dst->item((last_sign > 0) ? accumulated : 0,
-                      (last_sign < 0) ? -accumulated : 0);
+    // Optional: log the DataVector
+    std::ostringstream voss;
+    for (auto val : DataVector) voss << val << ", ";
+    ESP_LOGD(TAG, "DataVector: %s", voss.str().c_str());
+
+    // Transmit vector
+    auto call = this->tx_->transmit();
+    remote_base::RemoteTransmitData* dst = call.get_data();
+
+    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
+        for (auto pulse : DataVector) {
+            bool level = (pulse > 0);
+            dst->item(level ? pulse : 0, level ? 0 : -pulse);
         }
     }
 
     call.perform();
     ESP_LOGD(TAG, "send_command complete");
 }
+
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
   const auto &timings = data.get_raw_data(); // Get raw timings as a vector of int
