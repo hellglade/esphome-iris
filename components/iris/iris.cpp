@@ -74,7 +74,7 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 }
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-  const auto &timings = data.get_data(); // Get raw timings as a vector of int
+  const auto &timings = data.get_raw_data(); // Get raw timings as a vector of int
 
   ESP_LOGD(TAG, "Received raw timings (%d):", static_cast<int>(timings.size()));
   std::string out;
