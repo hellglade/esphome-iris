@@ -101,14 +101,15 @@ void esphome::iris::IrisComponent::send_command(IrisCommand cmd, IrisMode mode) 
 
     for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
         for (auto pulse : DataVector) {
-            bool level = (pulse > 0);
-            dst->item(level ? pulse : 0, level ? 0 : -pulse);
+            // Send each accumulated pulse as a single signed duration
+            dst->item(pulse);
         }
     }
 
     call.perform();
     ESP_LOGD(TAG, "send_command complete");
 }
+
 
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
