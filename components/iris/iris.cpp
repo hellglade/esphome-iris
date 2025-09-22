@@ -88,37 +88,19 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
 
 // Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
-    ESP_LOGD(TAG, "send_command (single frame): cmd=%d, mode=%d", cmd, mode);
+    ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
-    static const uint32_t MAX_PULSE = 1000; // max safe pulse per item
+    const int REPEAT_COUNT = 6;  // number of frames to send
+    auto DataVector = build_frame(this->address_, cmd, mode); // signed timings
 
-    // Build accumulated pulse vector
-    auto DataVector = build_frame(this->address_, cmd, mode);
-
-    auto call = this->tx_->transmit();
-    remote_base::RemoteTransmitData* dst = call.get_data();
-
-    // Transmit one frame only
-    for (auto pulse : DataVector) {
-        if (pulse > 0) {
-            uint32_t remaining = static_cast<uint32_t>(pulse);
-            while (remaining > 0) {
-                uint32_t send_mark = (remaining > MAX_PULSE) ? MAX_PULSE : remaining;
-                dst->item(send_mark, 0);
-                remaining -= send_mark;
-            }
-        } else {
-            uint32_t remaining = static_cast<uint32_t>(-pulse);
-            while (remaining > 0) {
-                uint32_t send_space = (remaining > MAX_PULSE) ? MAX_PULSE : remaining;
-                dst->item(0, send_space);
-                remaining -= send_space;
-            }
-        }
+    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
+        auto call = this->tx_->transmit_raw();   // start a new raw transmission
+        call.set_code(DataVector);               // provide the full frame
+        call.perform();                          // transmit
+        // no delay between frames
     }
 
-    call.perform();
-    ESP_LOGD(TAG, "send_command complete (single frame)");
+    ESP_LOGD(TAG, "send_command complete");
 }
 
 // Receive callback
