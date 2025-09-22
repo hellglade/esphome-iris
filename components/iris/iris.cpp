@@ -74,60 +74,15 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 }
 
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-  uint8_t sync_count = 0;
-  while (data.is_valid()) {
-    while (data.expect_item(SYMBOL * 4, SYMBOL * 4)) {
-      sync_count++;
-    }
-    if (sync_count >= 2 && data.expect_mark(4550)) {
-      break;
-    }
-    sync_count = 0;
-    data.advance();
-  }
-  if (sync_count < 2) {
-    return true;
-  }
-  data.expect_space(SYMBOL);
+  const auto &timings = data.get_data(); // Get raw timings as a vector of int
 
-  uint8_t frame[7];
-  for (uint8_t &byte : frame) {
-    for (uint32_t i = 0; i < 8; i++) {
-      byte <<= 1;
-      if (data.expect_mark(SYMBOL) || data.expect_mark(SYMBOL * 2)) {
-        data.expect_space(SYMBOL);
-        byte |= 0;
-      } else if (data.expect_space(SYMBOL) || data.expect_space(SYMBOL * 2)) {
-        data.expect_mark(SYMBOL);
-        byte |= 1;
-      } else {
-        return true;
-      }
-    }
+  ESP_LOGD(TAG, "Received raw timings (%d):", static_cast<int>(timings.size()));
+  std::string out;
+  for (size_t i = 0; i < timings.size(); i++) {
+    out += std::to_string(timings[i]);
+    if (i < timings.size() - 1) out += ", ";
   }
-
-  for (uint8_t i = 6; i >= 1; i--) {
-    frame[i] ^= frame[i - 1];
-  }
-
-  uint8_t crc = 0;
-  for (uint8_t i = 0; i < 7; i++) {
-    crc ^= frame[i];
-    crc ^= frame[i] >> 4;
-  }
-  if ((crc & 0xF) == 0) {
-    uint8_t command = frame[1] >> 4;
-    uint16_t code = (frame[2] << 8) | frame[3];
-    uint32_t address = (frame[4] << 16) | (frame[5] << 8) | frame[6];
-    ESP_LOGD(TAG, "Received: command: %" PRIx8 ", code: %" PRIu16 ", address %" PRIx32,
-             command, code, address);
-    if (command == IRIS_SENSOR) {
-      for (auto *sensor : this->sensors_) {
-        sensor->update_windy(address, (code & 1) != 0);
-        sensor->update_sunny(address, (code & 2) != 0);
-      }
-    }
-  }
+  ESP_LOGD(TAG, "%s", out.c_str());
 
   return true;
 }
