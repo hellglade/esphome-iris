@@ -73,7 +73,6 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
   call.perform();
 }
 
-
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
   std::vector<uint8_t> received_bytes;
 
@@ -85,20 +84,26 @@ bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
     return std::abs(value - expected) <= tolerance;
   };
 
-  const auto &raw = data.get_data(); // <-- FIXED HERE
+  // Extract MARK/SPACE durations into a flat vector
+  std::vector<int> timings;
+  for (const auto &item : data.items) {
+    if (item.type == remote_base::ITEM_TYPE_MARK || item.type == remote_base::ITEM_TYPE_SPACE) {
+      timings.push_back(item.duration);
+    }
+  }
 
-  // raw alternates mark and space durations: raw[0] = mark, raw[1] = space, etc.
-  if (raw.size() < expected_bits * 2) {
+  // Check that we have enough data (each bit uses 2 durations)
+  if (timings.size() < expected_bits * 2) {
     ESP_LOGW(TAG, "Not enough raw data: expected at least %d mark/space pairs, got %d",
-             expected_bits, static_cast<int>(raw.size() / 2));
+             expected_bits, static_cast<int>(timings.size() / 2));
     return false;
   }
 
   std::vector<bool> bits;
 
-  for (size_t i = 0; i + 1 < raw.size() && bits.size() < expected_bits; i += 2) {
-    int mark = raw[i];
-    int space = raw[i + 1];
+  for (size_t i = 0; i + 1 < timings.size() && bits.size() < expected_bits; i += 2) {
+    int mark = timings[i];
+    int space = timings[i + 1];
 
     // Decode bit by timing:
     // bit 0 = mark ~105 µs + space ~104 µs
@@ -156,11 +161,13 @@ bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
   IrisCommand cmd = static_cast<IrisCommand>(received_bytes[9]);
   IrisMode mode = static_cast<IrisMode>(received_bytes[10]);
 
-  // TODO: Handle received command and mode here
-  // e.g. handle_command(cmd, mode);
+  // TODO: Handle received command and mode
+  // Example:
+  // this->handle_command(cmd, mode);
 
   return true;
 }
+
 
 
 }  // namespace iris
