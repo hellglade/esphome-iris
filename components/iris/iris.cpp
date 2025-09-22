@@ -85,7 +85,7 @@ bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
     return std::abs(value - expected) <= tolerance;
   };
 
-  const auto &raw = data.raw;
+  const auto &raw = data.get_data(); // <-- FIXED HERE
 
   // raw alternates mark and space durations: raw[0] = mark, raw[1] = space, etc.
   if (raw.size() < expected_bits * 2) {
