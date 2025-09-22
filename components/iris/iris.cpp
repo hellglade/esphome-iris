@@ -22,87 +22,146 @@ void IrisComponent::setup() {
   this->rx_->register_listener(this);
 }
 
-std::vector<int> IrisComponent::build_frame(uint16_t address_, IrisCommand command_, IrisMode mode_) {
+void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
+  static const int MARK = 105;   // Mark duration (µs)
+  static const int SPACE = 104;  // Space duration (µs)
+  static const int REPEAT_COUNT = 6; // Total frames to send
+
   uint8_t frame[12] = {
-      0xAA, 0xAA, 0xAA, 0xAA, // sync
-      0x2D, 0xD4,             // sync
-      0x00, 0x00,             // ID0, ID1 (filled below)
-      0x00,                   // always 0x00
-      0x00,                   // instruction (filled below)
-      0x00,                   // mode (filled below)
-      0x00                    // checksum (calculated below)
+      0xAA, 0xAA, 0xAA, 0xAA, // Header / sync bytes
+      0x2D, 0xD4,             // Payload start
+      0x00, 0x00,             // Address MSB, LSB
+      0x00,                   // Reserved or payload
+      0x00,                   // Command
+      0x00,                   // Mode
+      0x00                    // Checksum
   };
 
-  frame[6] = (address_ >> 8) & 0xFF;  // high byte → 0xF9
-  frame[7] = address_ & 0xFF;         // low byte  → 0xCB
-  frame[9] = static_cast<uint8_t>(command_);
-  frame[10] = static_cast<uint8_t>(mode_);
+  // Set address bytes
+  frame[6] = (this->address_ >> 8) & 0xFF;
+  frame[7] = this->address_ & 0xFF;
 
-  // checksum: two's complement of sum(frame[4..10])
+  // Set command and mode
+  frame[9] = static_cast<uint8_t>(cmd);
+  frame[10] = static_cast<uint8_t>(mode);
+
+  // Calculate checksum over bytes 4 to 10
   unsigned int sum = 0;
   for (int i = 4; i <= 10; i++) {
     sum += frame[i];
   }
-  frame[11] = static_cast<uint8_t>(-sum);
+  frame[11] = static_cast<uint8_t>(-sum);  // Two’s complement checksum
 
-  // Convert to timing vector
-  std::vector<int> timings;
-  for (int i = 0; i < 12; i++) {
-    uint8_t byte = frame[i];
-    for (int bit = 7; bit >= 0; bit--) {
-      if (byte & (1 << bit)) {
-        timings.push_back(SYMBOL_HIGH);
-      } else {
-        timings.push_back(SYMBOL_LOW);
-      }
-    }
-  }
-
-  // Debug log full frame
-  std::ostringstream oss;
-  for (int i = 0; i < 12; i++) {
-    oss << "0x" << std::hex << std::uppercase << (int)frame[i];
-    if (i < 11) oss << ", ";
-  }
-  ESP_LOGI(TAG, "Frame bytes: %s", oss.str().c_str());
-
-  // Debug log waveform
-  std::string dataString;
-  for (int v : timings) {
-    dataString += std::to_string(v) + ", ";
-  }
-  if (!dataString.empty()) dataString.erase(dataString.length() - 2);
-  ESP_LOGD(TAG, "Waveform: %s", dataString.c_str());
-
-  return timings;
-}
-
-void IrisComponent::send_command(IrisCommand cmd, IrisMode mode, uint32_t repeat) {
-  auto timings = this->build_frame(this->address_, cmd, mode);
-
-  // Use ESPHome raw transmitter
   auto call = this->tx_->transmit();
   remote_base::RemoteTransmitData *dst = call.get_data();
 
-  for (uint32_t r = 0; r < (repeat + 1); r++) {
-    for (int t : timings) {
-      if (t > 0) {
-        dst->mark(t);
-      } else {
-        dst->space(-t);
+  for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
+    for (int i = 0; i < 12; i++) {
+      uint8_t byte = frame[i];
+      for (int bit = 7; bit >= 0; bit--) {
+        bool bit_set = (byte & (1 << bit)) != 0;
+        if (bit_set) {
+          dst->item(MARK, SPACE);
+        } else {
+          dst->item(SPACE, MARK);
+        }
       }
     }
-    // Gap between frames
-    dst->space(10000);
+    // No space or delay between repeats as requested
   }
 
   call.perform();
 }
 
+
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-  ESP_LOGD(TAG, "RX decode not implemented for 12-byte frame");
+  std::vector<uint8_t> received_bytes;
+
+  // Expected bits: 12 bytes * 8 bits = 96 bits
+  const int expected_bits = 12 * 8;
+
+  // Helper lambda for approximate timing check
+  auto is_approx = [](int value, int expected, int tolerance = 15) {
+    return std::abs(value - expected) <= tolerance;
+  };
+
+  const auto &raw = data.raw;
+
+  // raw alternates mark and space durations: raw[0] = mark, raw[1] = space, etc.
+  if (raw.size() < expected_bits * 2) {
+    ESP_LOGW(TAG, "Not enough raw data: expected at least %d mark/space pairs, got %d",
+             expected_bits, static_cast<int>(raw.size() / 2));
+    return false;
+  }
+
+  std::vector<bool> bits;
+
+  for (size_t i = 0; i + 1 < raw.size() && bits.size() < expected_bits; i += 2) {
+    int mark = raw[i];
+    int space = raw[i + 1];
+
+    // Decode bit by timing:
+    // bit 0 = mark ~105 µs + space ~104 µs
+    // bit 1 = space ~105 µs + mark ~104 µs
+    if (is_approx(mark, 105) && is_approx(space, 104)) {
+      bits.push_back(false); // bit 0
+    } else if (is_approx(space, 105) && is_approx(mark, 104)) {
+      bits.push_back(true);  // bit 1
+    } else {
+      ESP_LOGW(TAG, "Unexpected mark/space timings at index %zu: mark=%d, space=%d", i, mark, space);
+      return false;
+    }
+  }
+
+  // Pack bits into bytes (MSB first)
+  for (int i = 0; i < expected_bits; i += 8) {
+    uint8_t byte = 0;
+    for (int b = 0; b < 8; b++) {
+      byte <<= 1;
+      if (bits[i + b]) {
+        byte |= 1;
+      }
+    }
+    received_bytes.push_back(byte);
+  }
+
+  if (received_bytes.size() < 12) {
+    ESP_LOGW(TAG, "Decoded bytes less than 12");
+    return false;
+  }
+
+  // Log header and payload
+  ESP_LOGD(TAG, "Header/Sync: %02X %02X %02X %02X %02X %02X",
+           received_bytes[0], received_bytes[1], received_bytes[2],
+           received_bytes[3], received_bytes[4], received_bytes[5]);
+  ESP_LOGD(TAG, "Payload: %02X %02X %02X %02X %02X %02X",
+           received_bytes[6], received_bytes[7], received_bytes[8],
+           received_bytes[9], received_bytes[10], received_bytes[11]);
+
+  // Validate checksum (two's complement of sum bytes 4..10)
+  unsigned int sum = 0;
+  for (int i = 4; i <= 10; i++) {
+    sum += received_bytes[i];
+  }
+  uint8_t checksum = static_cast<uint8_t>(-sum);
+
+  if (checksum != received_bytes[11]) {
+    ESP_LOGW(TAG, "Checksum failed: calculated %02X but received %02X", checksum, received_bytes[11]);
+    return false;
+  }
+
+  ESP_LOGI(TAG, "Checksum valid, frame received successfully.");
+
+  // Extract command and mode
+  IrisCommand cmd = static_cast<IrisCommand>(received_bytes[9]);
+  IrisMode mode = static_cast<IrisMode>(received_bytes[10]);
+
+  // TODO: Handle received command and mode here
+  // e.g. handle_command(cmd, mode);
+
   return true;
 }
+
 
 }  // namespace iris
 }  // namespace esphome
