@@ -23,10 +23,11 @@ void IrisComponent::dump_config() {
 
 void IrisComponent::setup() {
     ESP_LOGCONFIG(TAG, "Iris setup done");
-    this->rx_->register_listener(this);
+    if (this->rx_ != nullptr)
+        this->rx_->register_listener(this);
 }
 
-// Static helper to build accumulated pulse vector
+// Build frame and accumulate consecutive pulses
 static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode mode) {
     uint8_t frame[12] = {
         0xAA, 0xAA, 0xAA, 0xAA, // Header / sync
@@ -43,7 +44,7 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     frame[9]  = static_cast<uint8_t>(cmd);
     frame[10] = static_cast<uint8_t>(mode);
 
-    // Calculate checksum over bytes 4..10
+    // Checksum over bytes 4..10
     unsigned int sum = 0;
     for (int i = 4; i <= 10; i++) sum += frame[i];
     frame[11] = static_cast<uint8_t>(-sum);
@@ -90,14 +91,24 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
-    const int REPEAT_COUNT = 6;  // number of frames to send
+    if (!this->tx_) {
+        ESP_LOGE(TAG, "No transmitter set!");
+        return;
+    }
+
+    const int REPEAT_COUNT = 6;
     auto DataVector = build_frame(this->address_, cmd, mode); // signed timings
 
-    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-        auto call = this->tx_->transmit_raw();   // start a new raw transmission
-        call.set_code(DataVector);               // provide the full frame
-        call.perform();                          // transmit
-        // no delay between frames
+    // Convert to raw_data vector of uint32_t pairs (mark, space)
+    std::vector<uint32_t> raw_data;
+    for (auto pulse : DataVector) {
+        if (pulse > 0) { raw_data.push_back(pulse); raw_data.push_back(0); }
+        else          { raw_data.push_back(0); raw_data.push_back(-pulse); }
+    }
+
+    // Transmit repeated frames
+    for (int i = 0; i < REPEAT_COUNT; i++) {
+        this->tx_->send_raw_data(raw_data);
     }
 
     ESP_LOGD(TAG, "send_command complete");
@@ -105,7 +116,7 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 
 // Receive callback
 bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-    const auto &timings = data.get_raw_data(); // raw timings vector
+    const auto &timings = data.get_raw_data();
 
     ESP_LOGD(TAG, "Received raw timings (%d):", static_cast<int>(timings.size()));
     std::ostringstream out;

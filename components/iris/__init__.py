@@ -1,23 +1,24 @@
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import remote_transmitter
-from esphome.components import remote_receiver
+from esphome.components import remote_transmitter, remote_receiver
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
 
 CODEOWNERS = ["@swoboda1337"]
 DEPENDENCIES = ["remote_transmitter", "remote_receiver"]
 MULTI_CONF = True
+
 CONF_TRANSMITTER_ID = "transmitter_id"
 CONF_RECEIVER_ID = "receiver_id"
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
 
-
+# Namespace
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
 IrisSendCommandAction = iris_ns.class_("IrisSendCommandAction", automation.Action)
 
+# Enums
 IrisCommand = iris_ns.enum("IrisCommand")
 IRIS_COMMAND = {
     "POWER": IrisCommand.IRIS_POWER,
@@ -42,15 +43,12 @@ IRIS_MODE = {
     "POOLSPA": IrisMode.IRIS_POOLSPA,
 }
 
+# Component schema
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
-        cv.GenerateID(CONF_TRANSMITTER_ID): cv.use_id(
-            remote_transmitter.RemoteTransmitterComponent
-        ),
-        cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(
-            remote_receiver.RemoteReceiverComponent
-        ),
+        cv.GenerateID(CONF_TRANSMITTER_ID): cv.use_id(remote_transmitter.RemoteTransmitterComponent),
+        cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(remote_receiver.RemoteReceiverComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
     }
 )
@@ -64,6 +62,8 @@ async def to_code(config):
     cg.add(var.set_rx(receiver))
     cg.add(var.set_address(config[CONF_ADDRESS]))
 
+
+# Action registration
 @automation.register_action(
     "iris.send_command",
     IrisSendCommandAction,

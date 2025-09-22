@@ -7,14 +7,19 @@
 namespace esphome {
 namespace iris {
 
-template<typename... Ts> class IrisSendCommandAction : public Action<Ts...> {
+// Action to send a command
+template<typename... Ts>
+class IrisSendCommandAction : public Action<Ts...> {
  public:
-  IrisSendCommandAction(IrisComponent *iris) : iris_(iris) {}
+  explicit IrisSendCommandAction(IrisComponent *iris) : iris_(iris) {}
+
+  // Templatable command & mode
   TEMPLATABLE_VALUE(IrisCommand, command)
   TEMPLATABLE_VALUE(IrisMode, mode)
 
   void play(Ts... x) override {
-    this->iris_->send_command(this->command_.value(x...), this->mode_.value(x...)); // repeat removed
+    // Call send_command on the component with resolved command/mode
+    this->iris_->send_command(this->command_.value(x...), this->mode_.value(x...));
   }
 
  protected:
@@ -23,5 +28,3 @@ template<typename... Ts> class IrisSendCommandAction : public Action<Ts...> {
 
 }  // namespace iris
 }  // namespace esphome
-
-// test
