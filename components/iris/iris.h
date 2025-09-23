@@ -3,6 +3,7 @@
 #include "esphome/core/preferences.h"
 #include "esphome/components/remote_transmitter/remote_transmitter.h"
 #include "esphome/components/remote_receiver/remote_receiver.h"
+#include "esphome/components/cc1101/cc1101.h"
 
 namespace esphome {
 namespace iris {
@@ -48,9 +49,15 @@ class IrisComponent : public Component, public remote_base::RemoteReceiverListen
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
+
+// Setter to link the CC1101 transceiver component
+  void set_transceiver(cc1101::CC1101Component *transceiver) { this->transceiver_ = transceiver; }
+
+
  protected:
   remote_transmitter::RemoteTransmitterComponent *tx_{nullptr};
   remote_receiver::RemoteReceiverComponent *rx_{nullptr};
+  cc1101::CC1101Component *transceiver_{nullptr};  // Pointer to the CC1101 transceiver
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
