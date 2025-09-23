@@ -95,21 +95,28 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     // Build pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    // Transmit
-    auto call = this->tx_->transmit();
-    remote_base::RemoteTransmitData* dst = call.get_data();
-
-    for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-        for (auto pulse : DataVector) {
-            if (pulse > 0) {
-                dst->item(static_cast<uint32_t>(pulse), 0);    // HIGH pulse
-            } else {
-                dst->item(0, static_cast<uint32_t>(-pulse));   // LOW pulse
-            }
-        }
+    // transmit directly from code instead of using transmitt_raw feature
+    int repeat = 5;
+    for (int r = 0; r < repeat; r++) {
+      // Transmit pulse sequence on GDO0 pin
+      if (this->cc1101_) {
+        this->cc1101_->begin_tx();
+      }
+      // Toggle GDO0 for transmission
+      for (int pulse : DataVector) {
+          bool level = (pulse > 0);
+          if (this->cc1101_ && this->cc1101_->gdo0_) {
+              this->cc1101_->gdo0_->digital_write(level);
+          }
+          delayMicroseconds(abs(pulse));
+      }
+      if (this->cc1101_) {
+        this->cc1101_->end_tx();
+        this->cc1101_->end_tx();
+      }
+      // Optional small delay between repeats
+      // delay(10);
     }
-
-    call.perform();
     ESP_LOGD(TAG, "send_command complete");
 }
 
