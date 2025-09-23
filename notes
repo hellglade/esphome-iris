@@ -1,0 +1,4 @@
+compiles ok 
+logs send_command: cmd=17, mode=1
+iris buttons do not work, 
+raw timings work ok
