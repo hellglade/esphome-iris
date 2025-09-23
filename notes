@@ -1,0 +1,7 @@
+compiles ok 
+logs: 
+'POOL POWER' Pressed.
+send_command: cmd=17, mode=1
+Frame: AA AA AA AA 2D D4 F9 CB 00 11 01 29
+
+raw sends ok 
