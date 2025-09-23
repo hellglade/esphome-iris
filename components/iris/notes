@@ -1,0 +1,35 @@
+INFO ESPHome 2025.7.5
+INFO Reading configuration c:\esphomechlorinenew\cc1101iris.yaml...
+INFO Generating C++ source...
+INFO Compiling app...
+Processing cc1101iris (board: esp32-c3-devkitm-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/53.03.13/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+HARDWARE: ESP32C3 160MHz, 320KB RAM, 4MB Flash
+ - framework-espidf @ 3.50302.0 (5.3.2) 
+ - tool-cmake @ 3.30.2 
+ - tool-esptoolpy @ 4.8.6 
+ - tool-mklittlefs @ 3.2.0 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 14.2.0+20240403 
+ - tool-xtensa-esp-elf-gdb @ 14.2.0+20240403 
+ - toolchain-esp32ulp @ 2.35.0-20220830 
+ - toolchain-riscv32-esp @ 13.2.0+20240530
+Reading CMake configuration...
+Dependency Graph
+|-- noise-c @ 0.1.10
+|-- ArduinoJson @ 7.4.2
+Compiling .pioenvs\cc1101iris\src\esphome\components\iris\iris.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\gobox_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\haier_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\jvc_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\keeloq_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\lg_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\magiquest_protocol.cpp.o
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\midea_protocol.cpp.o
+src/esphome/components/iris/iris.cpp: In member function 'virtual bool esphome::iris::IrisComponent::on_receive(esphome::remote_base::RemoteReceiveData)':
+src/esphome/components/iris/iris.cpp:77:30: error: 'class esphome::remote_base::RemoteReceiveData' has no member named 'get_data'; did you mean 'get_raw_data'?
+   77 |   const auto &timings = data.get_data(); // Get raw timings as a vector of int
+      |                              ^~~~~~~~
+      |                              get_raw_data
+*** [.pioenvs\cc1101iris\src\esphome\components\iris\iris.cpp.o] Error 1
+========================== [FAILED] Took 7.88 seconds ==========================
