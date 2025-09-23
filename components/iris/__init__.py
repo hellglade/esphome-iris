@@ -2,6 +2,7 @@ from esphome import automation
 import esphome.codegen as cg
 from esphome.components import remote_transmitter
 from esphome.components import remote_receiver
+from esphome.components import cc1101
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
 
@@ -12,7 +13,7 @@ CONF_TRANSMITTER_ID = "transmitter_id"
 CONF_RECEIVER_ID = "receiver_id"
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
-
+CONF_CC1101_ID = "cc1101_id"
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -45,24 +46,17 @@ IRIS_MODE = {
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
-        cv.GenerateID(CONF_TRANSMITTER_ID): cv.use_id(
-            remote_transmitter.RemoteTransmitterComponent
-        ),
-        cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(
-            remote_receiver.RemoteReceiverComponent
-        ),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
+        cv.Required(CONF_CC1101_ID): cv.use_id(cc1101.CC1101Component),
     }
 )
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    transmitter = await cg.get_variable(config[CONF_TRANSMITTER_ID])
-    receiver = await cg.get_variable(config[CONF_RECEIVER_ID])
-    cg.add(var.set_tx(transmitter))
-    cg.add(var.set_rx(receiver))
+    cc1101_comp = await cg.get_variable(config[CONF_CC1101_ID])
     cg.add(var.set_address(config[CONF_ADDRESS]))
+    cg.add(var.set_cc1101(cc1101_comp))
 
 @automation.register_action(
     "iris.send_command",
