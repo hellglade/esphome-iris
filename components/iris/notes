@@ -1,0 +1,16 @@
+Failes to compile
+
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\abbwelcome_protocol.cpp.o
+src/esphome/components/iris/iris.cpp: In member function 'virtual bool esphome::iris::IrisComponent::on_receive(esphome::remote_base::RemoteReceiveData)':
+src/esphome/components/iris/iris.cpp:89:32: error: 'class esphome::remote_base::RemoteReceiveData' has no member named 'items'
+   89 |   for (const auto &item : data.items) {
+      |                                ^~~~~
+src/esphome/components/iris/iris.cpp:90:35: error: 'ITEM_TYPE_MARK' is not a member of 'esphome::remote_base'
+   90 |     if (item.type == remote_base::ITEM_TYPE_MARK || item.type == remote_base::ITEM_TYPE_SPACE) {
+      |                                   ^~~~~~~~~~~~~~
+src/esphome/components/iris/iris.cpp:90:79: error: 'ITEM_TYPE_SPACE' is not a member of 'esphome::remote_base'
+   90 |     if (item.type == remote_base::ITEM_TYPE_MARK || item.type == remote_base::ITEM_TYPE_SPACE) {
+      |                                                                               ^~~~~~~~~~~~~~~
+Compiling .pioenvs\cc1101iris\src\esphome\components\remote_base\aeha_protocol.cpp.o
+*** [.pioenvs\cc1101iris\src\esphome\components\iris\iris.cpp.o] Error 1
+========================= [FAILED] Took 10.99 seconds =========================
