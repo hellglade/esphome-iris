@@ -19,11 +19,24 @@ static const int SPACE = 104;  // LOW bit duration
 void IrisComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "Iris:");
     ESP_LOGCONFIG(TAG, "  Address: %" PRIx16, this->address_);
+    if (this->transceiver_ != nullptr) {
+        ESP_LOGCONFIG(TAG, "  Using CC1101 transceiver");
+    } else {
+        ESP_LOGCONFIG(TAG, "  No CC1101 transceiver set");
+    }
 }
 
 void IrisComponent::setup() {
     ESP_LOGCONFIG(TAG, "Iris setup done");
-    this->rx_->register_listener(this);
+    if (this->rx_ != nullptr) {
+        this->rx_->register_listener(this);
+    } else {
+        ESP_LOGW(TAG, "Remote receiver not set");
+    }
+
+    if (this->transceiver_ == nullptr) {
+        ESP_LOGW(TAG, "CC1101 transceiver not set");
+    }
 }
 
 // Static helper to build accumulated pulse vector
@@ -92,41 +105,28 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 
     static const int REPEAT_COUNT = 6;
 
-    // Build pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    //// Transmit
-    //auto call = this->tx_->transmit();
-    //remote_base::RemoteTransmitData* dst = call.get_data();
-
-    //for (int repeat = 0; repeat < REPEAT_COUNT; repeat++) {
-    //    for (auto pulse : DataVector) {
-    //        if (pulse > 0) {
-    //            dst->item(static_cast<uint32_t>(pulse), 0);    // HIGH pulse
-    //        } else {
-    //            dst->item(0, static_cast<uint32_t>(-pulse));   // LOW pulse
-    //        }
-    //    }
-    //}
-
-    //call.perform();
-    ESP_LOGD(TAG, "send_command Started");
-    
-    // transmit directly from code instead of using transmitt_raw feature
-
-    for (int r = 0; r < REPEAT_COUNT; r++) {
-      // Transmit pulse sequence on GDO0 pin
-      for (int pulse : DataVector) {
-          bool level = (pulse > 0);
-          this->gdo0_->digital_write(level);
-          delayMicroseconds(abs(pulse));
-      }
-    
+    if (this->transceiver_ == nullptr) {
+        ESP_LOGE(TAG, "CC1101 transceiver not set, cannot send command");
+        return;
+    }
+    auto gdo0_pin = this->transceiver_->get_gdo0_pin();
+    if (gdo0_pin == nullptr) {
+        ESP_LOGE(TAG, "CC1101 GDO0 pin not set, cannot send command");
+        return;
     }
 
-    this->gdo0_->digital_write(false);  // Ensure line is idle/LOW
-    
-    
+    for (int r = 0; r < REPEAT_COUNT; r++) {
+        for (int pulse : DataVector) {
+            bool level = (pulse > 0);
+            gdo0_pin->digital_write(level);
+            delayMicroseconds(abs(pulse));
+        }
+    }
+
+    gdo0_pin->digital_write(false);  // Ensure line is idle/LOW
+
     ESP_LOGD(TAG, "send_command complete");
 }
 
