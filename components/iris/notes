@@ -1,0 +1,14 @@
+src/esphome/components/iris/iris.cpp: In member function 'virtual bool esphome::iris::IrisComponent::on_receive(esphome::remote_base::RemoteReceiveData)':
+src/esphome/components/iris/iris.cpp:79:29: error: 'SYMBOL' was not declared in this scope; did you mean 'SYMBOL_LOW'?
+   79 |     while (data.expect_item(SYMBOL * 4, SYMBOL * 4)) {
+      |                             ^~~~~~
+      |                             SYMBOL_LOW
+src/esphome/components/iris/iris.cpp:91:21: error: 'SYMBOL' was not declared in this scope; did you mean 'SYMBOL_LOW'?
+   91 |   data.expect_space(SYMBOL);
+      |                     ^~~~~~
+      |                     SYMBOL_LOW
+src/esphome/components/iris/iris.cpp:124:20: error: 'IRIS_SENSOR' was not declared in this scope
+  124 |     if (command == IRIS_SENSOR) {
+      |                    ^~~~~~~~~~~
+*** [.pioenvs\cc1101iris\src\esphome\components\iris\iris.cpp.o] Error 1
+========================== [FAILED] Took 7.82 seconds ==========================
