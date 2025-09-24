@@ -10,6 +10,7 @@ MULTI_CONF = True
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
 CONF_GDO0_PIN = "gdo0_pin"
+CONF_EMITTER_PIN = "emitter_pin"
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -44,6 +45,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(IrisComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
         cv.Required(CONF_GDO0_PIN): pins.gpio_output_pin_schema,
+        cv.Optional(CONF_EMITTER_PIN): pins.gpio_output_pin_schema,
     }
 )
 
@@ -53,6 +55,9 @@ async def to_code(config):
     pin = await cg.gpio_pin_expression(config[CONF_GDO0_PIN])
     cg.add(var.set_gdo0_pin(pin))
     cg.add(var.set_address(config[CONF_ADDRESS]))
+    if CONF_EMITTER_PIN in config:
+        emitter_pin = await cg.gpio_pin_expression(config[CONF_EMITTER_PIN])
+        cg.add(var.set_emitter_pin(emitter_pin))
 
 @automation.register_action(
     "iris.send_command",
