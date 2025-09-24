@@ -1,17 +1,16 @@
-from esphome import automation
-from esphome import pins
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_ADDRESS
+from esphome import automation, pins
 from esphome.components import cc1101
 from esphome.components import gpio
+from esphome.const import CONF_ID, CONF_ADDRESS
 
 CODEOWNERS = ["@swoboda1337"]
 MULTI_CONF = True
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
-CONF_GDO0_PIN = "gdo0_pin"
-CONF_EMITTER_PIN = "emitter_pin"
+CONF_GDO0 = "gdo0"
+CONF_EMITTER = "emitter"
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -45,20 +44,22 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-        cv.Required(CONF_GDO0_PIN): gpio.gpio_output_pin,
-        cv.Optional(CONF_EMITTER_PIN): gpio.gpio_output,
+        cv.Required(CONF_GDO0): pins.gpio_output_pin_schema,
+        cv.Required(CONF_EMITTER): pins.gpio_output_pin_schema,
     }
-).extend(cv.COMPONENT_SCHEMA)
+)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     pin = await cg.gpio_pin_expression(config[CONF_GDO0_PIN])
-    cg.add(var.set_gdo0_pin(pin))
     cg.add(var.set_address(config[CONF_ADDRESS]))
-    if CONF_EMITTER_PIN in config:
-        emitter_pin = await cg.gpio_pin_expression(config[CONF_EMITTER_PIN])
-        cg.add(var.set_emitter_pin(emitter_pin))
+    gdo0 = await cg.gpio_pin_expression(config[CONF_GDO0])
+    cg.add(var.set_config_gdo0(gdo0))
+    if CONF_EMITTER in config:
+        emitter = await cg.gpio_pin_expression(config[CONF_EMITTER])
+        cg.add(var.set_config_emitter(emitter))    
+
 
 @automation.register_action(
     "iris.send_command",
