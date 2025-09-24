@@ -15,42 +15,19 @@ namespace iris {
 static const char *TAG = "iris";
 
 IrisComponent::IrisComponent()
-{
-  this->gdo0_ = NULL;
-  this->emitter_ = NULL;
+    : gdo0_(nullptr), emitter_(nullptr) {}
+
+void IrisComponent::set_config_gdo0(InternalGPIOPin* pin) {
+  gdo0_ = pin;
 }
 
-void IrisComponent::set_config_gdo0(InternalGPIOPin* pin)
-{
-  gdo0_ = pin; 
-}
-
-void IrisComponent::set_config_emitter(InternalGPIOPin* pin)
-{
+void IrisComponent::set_config_emitter(InternalGPIOPin* pin) {
   emitter_ = pin;
 }
 
 // Symbol durations
 static const int MARK = 105;   // HIGH bit duration (us)
 static const int SPACE = 104;  // LOW bit duration (us)
-
-static const int REPEAT_COUNT = 5;  // Consistent repeat count
-
-void IrisComponent::dump_config() {
-    ESP_LOGCONFIG(TAG, "Iris:");
-    ESP_LOGCONFIG(TAG, "  Address: %" PRIx16, this->address_);
-    LOG_PIN("  Iris GDO0: ", this->gdo0_);
-    LOG_PIN("  Iris EMITTER: ", this->emitter_);
-}
-
-void IrisComponent::setup() {
-  this->gdo0_->setup();
-  this->emitter_->setup();
-  this->gdo0_->pin_mode(gpio::FLAG_OUTPUT);
-  this->emitter_->pin_mode(gpio::FLAG_OUTPUT);
-  
-    ESP_LOGCONFIG(TAG, "Iris setup done");
-}
 
 // Static helper to build accumulated pulse vector
 static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode mode) {
@@ -112,28 +89,57 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     return DataVector;
 }
 
+void IrisComponent::dump_config() {
+    ESP_LOGCONFIG(TAG, "Iris:");
+    ESP_LOGCONFIG(TAG, "  Address: %" PRIx16, this->address_);
+    LOG_PIN("  Iris GDO0: ", this->gdo0_);
+    LOG_PIN("  Iris EMITTER: ", this->emitter_);
+}
+
+void IrisComponent::setup() {
+  if (this->gdo0_ != nullptr) {
+    this->gdo0_->setup();
+    this->gdo0_->pin_mode(gpio::FLAG_OUTPUT);
+  } else {
+    ESP_LOGW(TAG, "GDO0 pin is not configured!");
+  }
+
+  if (this->emitter_ != nullptr) {
+    this->emitter_->setup();
+    this->emitter_->pin_mode(gpio::FLAG_OUTPUT);
+  } else {
+    ESP_LOGW(TAG, "Emitter pin is not configured!");
+  }
+
+  ESP_LOGCONFIG(TAG, "Iris setup done");
+}
+
 // Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
-    emitter_->digital_write(true);
-    static const int REPEAT_COUNT = 6;
 
-    // Build pulse vector
+    if (this->emitter_ != nullptr)
+      this->emitter_->digital_write(true);
+
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    // transmit directly from code instead of using transmitt_raw feature
-    int repeat = 5;
+    constexpr int repeat = 5;
     for (int r = 0; r < repeat; r++) {
-      // Transmit pulse sequence on GDO0 pin
+      if (this->gdo0_ == nullptr) {
+        ESP_LOGW(TAG, "GDO0 pin not configured, cannot send data");
+        return;
+      }
+
       for (int pulse : DataVector) {
           bool level = (pulse > 0);
-          gdo0_->digital_write(level);
+          this->gdo0_->digital_write(level);
           delayMicroseconds(abs(pulse));
       }
 
-       // Optional small delay between repeats
-       // delay(10);
+      // Optional small delay between repeats
+      // delay(10);
     }
+
     ESP_LOGD(TAG, "send_command complete");
 }
 
