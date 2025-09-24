@@ -1,16 +1,11 @@
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import remote_transmitter
-from esphome.components import remote_receiver
-from esphome.components import cc1101
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
+from esphome.components import cc1101
 
 CODEOWNERS = ["@swoboda1337"]
-DEPENDENCIES = ["remote_transmitter", "remote_receiver"]
 MULTI_CONF = True
-CONF_TRANSMITTER_ID = "transmitter_id"
-CONF_RECEIVER_ID = "receiver_id"
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
 CONF_CC1101_ID = "cc1101_id"
