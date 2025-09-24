@@ -14,6 +14,27 @@ namespace iris {
 
 static const char *TAG = "iris";
 
+IrisComponent::IrisComponent()
+{
+  this->gdo0_ = NULL;
+  this->emitter_ = NULL;
+}
+
+void IrisComponent::set_config_gdo0(InternalGPIOPin* pin)
+{
+  gdo0_ = pin; 
+  
+  if(gdo2_ == NULL) gdo2_ = pin;
+}
+
+void IrisComponent::set_config_emitter(InternalGPIOPin* pin)
+{
+  emitter_ = pin;
+}
+
+
+
+
 // Symbol durations
 static const int MARK = 105;   // HIGH bit duration (us)
 static const int SPACE = 104;  // LOW bit duration (us)
