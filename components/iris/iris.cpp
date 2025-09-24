@@ -108,18 +108,12 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 
     // Test: Toggle emitter pin ON for 1s, then OFF for 1s
     if (this->emitter_pin_) {
-        this->emitter_pin_->digital_write(true);  // ON
-        delay(1000);
-        this->emitter_pin_->digital_write(false); // OFF
-        delay(1000);
-        this->emitter_pin_->digital_write(true);  // ON
-        delay(1000);
-        this->emitter_pin_->digital_write(false); // OFF
-        delay(1000);
-        this->emitter_pin_->digital_write(true);  // ON
-        delay(1000);
-        this->emitter_pin_->digital_write(false); // OFF
-        delay(1000);
+        for (int i = 0; i < 5; i++) {
+            this->emitter_pin_->digital_write(true);  // ON
+            for (int j = 0; j < 100; j++) delay(10);  // 1 second ON (100 × 10ms)
+            this->emitter_pin_->digital_write(false); // OFF
+            for (int j = 0; j < 100; j++) delay(10);  // 1 second OFF (100 × 10ms)
+        }
     }
 
     static const int REPEAT_COUNT = 6;
