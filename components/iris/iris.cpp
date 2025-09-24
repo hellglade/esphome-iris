@@ -101,17 +101,14 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
       // Transmit pulse sequence on GDO0 pin
       if (this->cc1101_) {
         this->cc1101_->begin_tx();
-      }
-      // Toggle GDO0 for transmission
-      for (int pulse : DataVector) {
-          bool level = (pulse > 0);
-          if (this->cc1101_ && this->cc1101_->gdo0_) {
-              this->cc1101_->gdo0_->digital_write(level);
-          }
-          delayMicroseconds(abs(pulse));
-      }
-      if (this->cc1101_) {
-        this->cc1101_->end_tx();
+        // Toggle GDO0 pin for transmission
+        for (int pulse : DataVector) {
+            bool level = (pulse > 0);
+            if (this->cc1101_->gdo0_) {
+                this->cc1101_->gdo0_->digital_write(level);
+            }
+            delayMicroseconds(abs(pulse));
+        }
         this->cc1101_->end_tx();
       }
       // Optional small delay between repeats
