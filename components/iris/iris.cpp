@@ -106,54 +106,47 @@ static std::vector<int> DataVectorTest = {
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
-    // Test: Toggle emitter pin ON for 1s, then OFF for 1s
+    // Emitter pin test (unchanged)
     if (this->emitter_pin_) {
         for (int i = 0; i < 5; i++) {
             ESP_LOGD(TAG, "Emitter pin ON");
-            this->emitter_pin_->digital_write(true);  // ON
-            for (int j = 0; j < 100; j++) delay(10);  // 1 second ON (100 × 10ms)
+            this->emitter_pin_->digital_write(true);
+            for (int j = 0; j < 100; j++) delay(10);
             ESP_LOGD(TAG, "Emitter pin OFF");
-            this->emitter_pin_->digital_write(false); // OFF
-            for (int j = 0; j < 100; j++) delay(10);  // 1 second OFF (100 × 10ms)
+            this->emitter_pin_->digital_write(false);
+            for (int j = 0; j < 100; j++) delay(10);
         }
     }
-
-    static const int REPEAT_COUNT = 6;
 
     // Build pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    int repeat = 5;
-    for (int r = 0; r < repeat; r++) {
-      if (this->gdo0_pin_) {
-        for (int pulse : DataVector) {
-            bool level = (pulse > 0);
-            ESP_LOGD(TAG, "GDO0 pin %s for %d us", level ? "HIGH" : "LOW", abs(pulse));
-            this->gdo0_pin_->digital_write(level);
-            delayMicroseconds(abs(pulse));
-        }
-      }
+    // Convert DataVector to unsigned pulses for transmit_raw
+    std::vector<uint32_t> raw_pulses;
+    for (int pulse : DataVector) {
+        raw_pulses.push_back(static_cast<uint32_t>(abs(pulse)));
     }
+
+    // Transmit DataVector
+    if (this->tx_) {
+        ESP_LOGD(TAG, "Transmitting DataVector via remote_transmitter");
+        this->tx_->transmit_raw(raw_pulses, 0); // 0 = no carrier
+    }
+
+    // Add delay (e.g., 1 second)
+    delay(1000);
+
+    // Transmit DataVectorTest
+    std::vector<uint32_t> raw_pulses_test;
+    for (int pulse : DataVectorTest) {
+        raw_pulses_test.push_back(static_cast<uint32_t>(abs(pulse)));
+    }
+    if (this->tx_) {
+        ESP_LOGD(TAG, "Transmitting DataVectorTest via remote_transmitter");
+        this->tx_->transmit_raw(raw_pulses_test, 0); // 0 = no carrier
+    }
+
     ESP_LOGD(TAG, "send_command complete");
-
-    this->gdo0_pin_->digital_write(false);
-
-    delay(1000); // Add 1 second delay before transmitting DataVectorTest
-
-    ESP_LOGD(TAG, "send_command: static Raw");
-
-    for (int r = 0; r < repeat; r++) {
-      if (this->gdo0_pin_) {
-        for (int pulse : DataVectorTest) {
-            bool level = (pulse > 0);
-            ESP_LOGD(TAG, "GDO0 pin %s for %d us (static)", level ? "HIGH" : "LOW", abs(pulse));
-            this->gdo0_pin_->digital_write(level);
-            delayMicroseconds(abs(pulse));
-        }
-      }
-    }
-
-    ESP_LOGD(TAG, "send_command: static Raw");
 }
 
 }  // namespace iris
