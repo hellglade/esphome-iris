@@ -45,11 +45,11 @@ class IrisComponent : public Component {
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
-  void set_gdo0_pin(esphome::InternalGPIOPin *pin) { gdo0_pin_ = pin; }
-  void set_emitter_pin(esphome::InternalGPIOPin *pin) { emitter_pin_ = pin; }
+  void set_gdo0_pin(esphome::GPIOPin *pin) { gdo0_pin_ = pin; }
+  void set_emitter_pin(esphome::GPIOPin *pin) { emitter_pin_ = pin; }
  protected:
-  esphome::InternalGPIOPin *gdo0_pin_{nullptr};
-  esphome::InternalGPIOPin *emitter_pin_{nullptr};
+  esphome::GPIOPin *gdo0_pin_{nullptr};
+  esphome::GPIOPin *emitter_pin_{nullptr};
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
