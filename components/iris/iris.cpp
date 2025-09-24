@@ -23,8 +23,6 @@ IrisComponent::IrisComponent()
 void IrisComponent::set_config_gdo0(InternalGPIOPin* pin)
 {
   gdo0_ = pin; 
-  
-  if(gdo2_ == NULL) gdo2_ = pin;
 }
 
 void IrisComponent::set_config_emitter(InternalGPIOPin* pin)
@@ -49,7 +47,7 @@ void IrisComponent::setup() {
   this->gdo0_->setup();
   this->emitter_->setup();
   this->gdo0_->pin_mode(gpio::FLAG_OUTPUT);
-  this->emmiter_->pin_mode(gpio::FLAG_OUTPUT);
+  this->emitter_->pin_mode(gpio::FLAG_OUTPUT);
   
     ESP_LOGCONFIG(TAG, "Iris setup done");
 }
