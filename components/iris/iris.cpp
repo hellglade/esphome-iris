@@ -54,7 +54,7 @@ void IrisComponent::setup() {
     ESP_LOGCONFIG(TAG, "Iris setup done");
 }
 
-// Helper: Build pulse frame vector
+// Static helper to build accumulated pulse vector
 static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode mode) {
     uint8_t frame[12] = {
         0xAA, 0xAA, 0xAA, 0xAA, // Header / sync
@@ -81,6 +81,7 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     for (auto b : frame) oss << std::hex << std::uppercase << (int)b << " ";
     ESP_LOGD(TAG, "Frame: %s", oss.str().c_str());
 
+    // Build accumulated pulse vector
     std::vector<int> DataVector;
     int accumulated = 0;
     int last_sign = 0;
@@ -113,12 +114,16 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     return DataVector;
 }
 
+// Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
+
+    static const int REPEAT_COUNT = 6;
 
     // Build pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
+    // transmit directly from code instead of using transmitt_raw feature
     int repeat = 5;
     for (int r = 0; r < repeat; r++) {
       // Transmit pulse sequence on GDO0 pin
