@@ -4,6 +4,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
 from esphome.components import cc1101
+from esphome.components import remote_transmitter
 
 CODEOWNERS = ["@swoboda1337"]
 MULTI_CONF = True
@@ -11,6 +12,7 @@ CONF_COMMAND = "command"
 CONF_MODE = "mode"
 CONF_GDO0_PIN = "gdo0_pin"
 CONF_EMITTER_PIN = "emitter_pin"
+CONF_TRANSMITTER_ID = "transmitter_id"
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -46,6 +48,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
         cv.Required(CONF_GDO0_PIN): pins.gpio_output_pin_schema,
         cv.Optional(CONF_EMITTER_PIN): pins.gpio_output_pin_schema,
+        cv.Required(CONF_TRANSMITTER_ID): cv.use_id(remote_transmitter.RemoteTransmitterComponent),
     }
 )
 
@@ -58,6 +61,8 @@ async def to_code(config):
     if CONF_EMITTER_PIN in config:
         emitter_pin = await cg.gpio_pin_expression(config[CONF_EMITTER_PIN])
         cg.add(var.set_emitter_pin(emitter_pin))
+    tx = await cg.get_variable(config[CONF_TRANSMITTER_ID])
+    cg.add(var.set_transmitter(tx))
 
 @automation.register_action(
     "iris.send_command",
