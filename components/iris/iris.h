@@ -1,8 +1,6 @@
 #pragma once
 
 #include "esphome/core/preferences.h"
-#include "esphome/components/remote_transmitter/remote_transmitter.h"
-#include "esphome/components/remote_receiver/remote_receiver.h"
 #include "esphome/components/cc1101/cc1101.h"
 
 namespace esphome {
@@ -41,18 +39,13 @@ class IrisComponent : public Component {
   float get_setup_priority() const override { return setup_priority::LATE; }
   void setup() override;
   void dump_config() override;
-  bool on_receive(remote_base::RemoteReceiveData data) override;
-  void send_command(IrisCommand cmd, IrisMode mode); // repeat removed
-  void set_tx(remote_transmitter::RemoteTransmitterComponent *tx) { this->tx_ = tx; }
-  void set_rx(remote_receiver::RemoteReceiverComponent *rx) { this->rx_ = rx; }
+  void send_command(IrisCommand cmd, IrisMode mode);
   void set_address(uint16_t address) { this->address_ = address; }
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
   void set_cc1101(esphome::cc1101::CC1101Component *cc1101) { cc1101_ = cc1101; }
  protected:
-  remote_transmitter::RemoteTransmitterComponent *tx_{nullptr};
-  remote_receiver::RemoteReceiverComponent *rx_{nullptr};
   esphome::cc1101::CC1101Component *cc1101_{nullptr};
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
