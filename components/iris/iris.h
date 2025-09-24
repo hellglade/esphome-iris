@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/preferences.h"
+#include "esphome/core/gpio.h"
 #include "esphome/components/cc1101/cc1101.h"
 
 namespace esphome {
@@ -44,9 +45,9 @@ class IrisComponent : public Component {
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
-  void set_cc1101(esphome::cc1101::CC1101Component *cc1101) { cc1101_ = cc1101; }
+  void set_gdo0_pin(esphome::InternalGPIOPin *pin) { gdo0_pin_ = pin; }
  protected:
-  esphome::cc1101::CC1101Component *cc1101_{nullptr};
+  esphome::InternalGPIOPin *gdo0_pin_{nullptr};
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
