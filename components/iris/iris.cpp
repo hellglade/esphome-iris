@@ -23,7 +23,6 @@ void IrisComponent::dump_config() {
 
 void IrisComponent::setup() {
     ESP_LOGCONFIG(TAG, "Iris setup done");
-    this->rx_->register_listener(this);
 }
 
 // Static helper to build accumulated pulse vector
@@ -104,8 +103,8 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
         // Toggle GDO0 pin for transmission
         for (int pulse : DataVector) {
             bool level = (pulse > 0);
-            if (this->cc1101_ && this->cc1101_->get_gdo0()) {
-                this->cc1101_->get_gdo0()->digital_write(level);
+            if (this->cc1101_ && this->cc1101_->get_gdo0_pin_obj()) {
+                this->cc1101_->get_gdo0_pin_obj()->digital_write(level);
             }
             delayMicroseconds(abs(pulse));
         }
@@ -115,21 +114,6 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
       // delay(10);
     }
     ESP_LOGD(TAG, "send_command complete");
-}
-
-// Receive callback
-bool IrisComponent::on_receive(remote_base::RemoteReceiveData data) {
-    const auto &timings = data.get_raw_data(); // raw timings vector
-
-    ESP_LOGD(TAG, "Received raw timings (%d):", static_cast<int>(timings.size()));
-    std::ostringstream out;
-    for (size_t i = 0; i < timings.size(); i++) {
-        out << timings[i];
-        if (i < timings.size() - 1) out << ", ";
-    }
-    ESP_LOGD(TAG, "%s", out.str().c_str());
-
-    return true;
 }
 
 }  // namespace iris
