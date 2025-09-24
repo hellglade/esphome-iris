@@ -106,6 +106,22 @@ static std::vector<int> DataVectorTest = {
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
+    // Test: Toggle emitter pin ON for 1s, then OFF for 1s
+    if (this->emitter_pin_) {
+        this->emitter_pin_->digital_write(true);  // ON
+        delay(1000);
+        this->emitter_pin_->digital_write(false); // OFF
+        delay(1000);
+        this->emitter_pin_->digital_write(true);  // ON
+        delay(1000);
+        this->emitter_pin_->digital_write(false); // OFF
+        delay(1000);
+        this->emitter_pin_->digital_write(true);  // ON
+        delay(1000);
+        this->emitter_pin_->digital_write(false); // OFF
+        delay(1000);
+    }
+
     static const int REPEAT_COUNT = 6;
 
     // Build pulse vector
@@ -127,6 +143,8 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     }
     ESP_LOGD(TAG, "send_command complete");
 
+    this->gdo0_pin_->digital_write(false);
+    
     delay(1000); // Add 1 second delay before transmitting DataVectorTest
 
     ESP_LOGD(TAG, "send_command: static Raw");
