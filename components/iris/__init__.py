@@ -48,7 +48,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_GDO0_PIN): gpio.gpio_output_pin_schema,
         cv.Optional(CONF_EMITTER_PIN): gpio.gpio_output_pin_schema,
     }
-)
+).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
