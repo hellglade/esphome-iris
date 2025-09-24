@@ -117,7 +117,7 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
 // Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
-
+    emitter_->digital_write(true);
     static const int REPEAT_COUNT = 6;
 
     // Build pulse vector
