@@ -115,17 +115,12 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     int repeat = 5;
     for (int r = 0; r < repeat; r++) {
       // Transmit pulse sequence on GDO0 pin
-      if (this->cc1101_) {
-        this->cc1101_->begin_tx();
-        // Toggle GDO0 pin for transmission
+      if (this->gdo0_pin_) {
         for (int pulse : DataVector) {
             bool level = (pulse > 0);
-            if (this->cc1101_ && this->cc1101_->get_gdo0_pin_obj()) {
-                this->cc1101_->get_gdo0_pin_obj()->digital_write(level);
-            }
+            this->gdo0_pin_->digital_write(level);
             delayMicroseconds(abs(pulse));
         }
-        this->cc1101_->end_tx();
       }
       // Optional small delay between repeats
       // delay(10);
@@ -137,16 +132,12 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: static Raw");
 
     for (int r = 0; r < repeat; r++) {
-      if (this->cc1101_) {
-        this->cc1101_->begin_tx();
+      if (this->gdo0_pin_) {
         for (int pulse : DataVectorTest) {
             bool level = (pulse > 0);
-            if (this->cc1101_->get_gdo0_pin_obj()) {
-                this->cc1101_->get_gdo0_pin_obj()->digital_write(level);
-            }
+            this->gdo0_pin_->digital_write(level);
             delayMicroseconds(abs(pulse));
         }
-        this->cc1101_->end_tx();
       }
     }
 
