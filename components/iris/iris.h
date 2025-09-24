@@ -34,30 +34,35 @@ enum IrisMode : uint16_t {
 
 class IrisSensor {
  public:
+  // Add sensor-related members if needed
 };
 
 class IrisComponent : public Component {
  public:
+  IrisComponent();  // Constructor declaration
 
-  IrisComponent(); 
   float get_setup_priority() const override { return setup_priority::LATE; }
   void setup() override;
   void dump_config() override;
   void send_command(IrisCommand cmd, IrisMode mode);
+
   void set_address(uint16_t address) { this->address_ = address; }
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
+
   void set_config_gdo0(InternalGPIOPin* pin);
   void set_config_emitter(InternalGPIOPin* pin);
 
  protected:
-  InternalGPIOPin* gdo0_;
-  InternalGPIOPin* emitter_;
+  InternalGPIOPin* gdo0_{nullptr};
+  InternalGPIOPin* emitter_{nullptr};  // Optional pin, initialized to nullptr
+
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
   IrisMode mode_{IRIS_POOL};
+
   std::vector<IrisSensor *> sensors_;
 };
 
