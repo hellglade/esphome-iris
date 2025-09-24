@@ -1,4 +1,5 @@
 from esphome import automation
+from esphome import pins
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
@@ -8,7 +9,7 @@ CODEOWNERS = ["@swoboda1337"]
 MULTI_CONF = True
 CONF_COMMAND = "command"
 CONF_MODE = "mode"
-CONF_CC1101_ID = "cc1101_id"
+CONF_GDO0_PIN = "gdo0_pin"
 
 iris_ns = cg.esphome_ns.namespace("iris")
 IrisComponent = iris_ns.class_("IrisComponent", cg.Component)
@@ -42,16 +43,16 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-        cv.Required(CONF_CC1101_ID): cv.use_id(cc1101.CC1101Component),
+        cv.Required(CONF_GDO0_PIN): pins.gpio_output_pin_schema,
     }
 )
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    cc1101_comp = await cg.get_variable(config[CONF_CC1101_ID])
+    pin = await cg.gpio_pin_expression(config[CONF_GDO0_PIN])
+    cg.add(var.set_gdo0_pin(pin))
     cg.add(var.set_address(config[CONF_ADDRESS]))
-    cg.add(var.set_cc1101(cc1101_comp))
 
 @automation.register_action(
     "iris.send_command",
