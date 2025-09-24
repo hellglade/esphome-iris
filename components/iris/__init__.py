@@ -44,8 +44,8 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-        cv.Required(CONF_GDO0): pins.gpio_output_pin_schema,
-        cv.Required(CONF_EMITTER): pins.gpio_output_pin_schema,
+        cv.Required(CONF_GDO0): cv.pin,
+        cv.Required(CONF_EMITTER): cv.pin,
     }
 )
 
