@@ -1,8 +1,11 @@
 #pragma once
 
-#include "esphome/core/preferences.h"
-#include "esphome/core/gpio.h"
-#include "esphome/components/cc1101/cc1101.h"
+#include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/spi/spi.h"
+#include "esphome/components/number/number.h"
+#include "esphome/components/select/select.h"
+#include <vector>
 
 namespace esphome {
 namespace iris {
@@ -31,8 +34,6 @@ enum IrisMode : uint16_t {
 
 class IrisSensor {
  public:
-  virtual void update_sunny(uint16_t address, bool value) {}
-  virtual void update_windy(uint16_t address, bool value) {}
 };
 
 class IrisComponent : public Component {
@@ -45,11 +46,12 @@ class IrisComponent : public Component {
   void set_command(IrisCommand command) { this->command_ = command; }
   void set_mode(IrisMode mode) { this->mode_ = mode; }
   void add_sensor(IrisSensor *sensor) { this->sensors_.push_back(sensor); }
-  void set_gdo0_pin(esphome::GPIOPin *pin) { gdo0_pin_ = pin; }
-  void set_emitter_pin(esphome::GPIOPin *pin) { emitter_pin_ = pin; }
+  void set_config_gdo0(InternalGPIOPin* pin);
+  void set_config_emitter(InternalGPIOPin* pin);
+
  protected:
-  esphome::GPIOPin *gdo0_pin_{nullptr};
-  esphome::GPIOPin *emitter_pin_{nullptr};
+  InternalGPIOPin* gdo0_;
+  InternalGPIOPin* emitter_;
   ESPPreferenceObject preferences_;
   uint16_t address_{0};
   IrisCommand command_{IRIS_POWER};
