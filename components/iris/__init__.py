@@ -4,6 +4,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ADDRESS
 from esphome.components import cc1101
+from esphome.components import gpio
 
 CODEOWNERS = ["@swoboda1337"]
 MULTI_CONF = True
@@ -44,8 +45,8 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(IrisComponent),
         cv.Required(CONF_ADDRESS): cv.hex_uint16_t,
-        cv.Required(CONF_GDO0_PIN): pins.gpio_output_pin_schema,
-        cv.Optional(CONF_EMITTER_PIN): pins.gpio_output_pin_schema,
+        cv.Required(CONF_GDO0_PIN): gpio.gpio_output_pin_schema,
+        cv.Optional(CONF_EMITTER_PIN): gpio.gpio_output_pin_schema,
     }
 )
 
