@@ -104,8 +104,8 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
         // Toggle GDO0 pin for transmission
         for (int pulse : DataVector) {
             bool level = (pulse > 0);
-            if (this->cc1101_->gdo0_) {
-                this->cc1101_->gdo0_->digital_write(level);
+            if (this->cc1101_ && this->cc1101_->get_gdo0()) {
+                this->cc1101_->get_gdo0()->digital_write(level);
             }
             delayMicroseconds(abs(pulse));
         }
