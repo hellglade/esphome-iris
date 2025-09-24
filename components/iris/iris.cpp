@@ -132,6 +132,7 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     }
     ESP_LOGD(TAG, "send_command complete");
 
+    delay(1000); // Add 1 second delay before transmitting DataVectorTest
 
     ESP_LOGD(TAG, "send_command: static Raw");
 
