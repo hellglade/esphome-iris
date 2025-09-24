@@ -38,6 +38,8 @@ class IrisSensor {
 
 class IrisComponent : public Component {
  public:
+
+  IrisComponent(); 
   float get_setup_priority() const override { return setup_priority::LATE; }
   void setup() override;
   void dump_config() override;
