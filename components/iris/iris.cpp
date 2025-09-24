@@ -2,10 +2,12 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/application.h"  // for esphome::delay()
 
 #include <vector>
 #include <sstream>
 #include <string>
+#include <inttypes.h>  // for PRIx16
 
 namespace esphome {
 namespace iris {
@@ -13,8 +15,10 @@ namespace iris {
 static const char *TAG = "iris";
 
 // Symbol durations
-static const int MARK = 105;   // HIGH bit duration
-static const int SPACE = 104;  // LOW bit duration
+static const int MARK = 105;   // HIGH bit duration (us)
+static const int SPACE = 104;  // LOW bit duration (us)
+
+static const int REPEAT_COUNT = 5;  // Consistent repeat count
 
 void IrisComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "Iris:");
@@ -23,9 +27,17 @@ void IrisComponent::dump_config() {
 
 void IrisComponent::setup() {
     ESP_LOGCONFIG(TAG, "Iris setup done");
+    if (gdo0_pin_) {
+        gdo0_pin_->setup();
+        gdo0_pin_->digital_write(false);
+    }
+    if (emitter_pin_) {
+        emitter_pin_->setup();
+        emitter_pin_->digital_write(false);
+    }
 }
 
-// Static helper to build accumulated pulse vector
+// Helper: Build pulse frame vector
 static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode mode) {
     uint8_t frame[12] = {
         0xAA, 0xAA, 0xAA, 0xAA, // Header / sync
@@ -52,7 +64,6 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     for (auto b : frame) oss << std::hex << std::uppercase << (int)b << " ";
     ESP_LOGD(TAG, "Frame: %s", oss.str().c_str());
 
-    // Build accumulated pulse vector
     std::vector<int> DataVector;
     int accumulated = 0;
     int last_sign = 0;
@@ -85,75 +96,41 @@ static std::vector<int> build_frame(uint16_t address, IrisCommand cmd, IrisMode 
     return DataVector;
 }
 
-static std::vector<int> DataVectorTest = {
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-312,105,-104,210,-104,315,-104,105,-104,
-105,-208,525,-208,315,-208,105,-104,210,-1144,105,-312,105,-728,105,-208,105,-104,105,-208,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-312,105,-104,210,-104,315,-104,105,-104,
-105,-208,525,-208,315,-208,105,-104,210,-1144,105,-312,105,-728,105,-208,105,-104,105,-208,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-312,105,-104,210,-104,315,-104,105,-104,
-105,-208,525,-208,315,-208,105,-104,210,-1144,105,-312,105,-728,105,-208,105,-104,105,-208,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,105,-104,
-105,-104,105,-104,105,-104,105,-104,105,-104,105,-312,105,-104,210,-104,315,-104,105,-104,
-105,-208,525,-208,315,-208,105,-104,210,-1144,105,-312,105,-728,105,-208,105,-104,105,-208
-};
+// Helper: Toggle emitter pin N times with given delay_ms
+void IrisComponent::toggle_emitter_pin(int times, int delay_ms) {
+    if (!emitter_pin_) return;
+    for (int i = 0; i < times; i++) {
+        emitter_pin_->digital_write(true);
+        esphome::delay(delay_ms);
+        emitter_pin_->digital_write(false);
+        esphome::delay(delay_ms);
+    }
+}
 
-
-
-// Send command
 void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
     ESP_LOGD(TAG, "send_command: cmd=%d, mode=%d", cmd, mode);
 
-    // Test: Toggle emitter pin ON for 1s, then OFF for 1s
-    if (this->emitter_pin_) {
-        for (int i = 0; i < 5; i++) {
-            ESP_LOGD(TAG, "Emitter pin ON");
-            this->emitter_pin_->digital_write(true);  // ON
-            for (int j = 0; j < 100; j++) delay(10);  // 1 second ON (100 × 10ms)
-            ESP_LOGD(TAG, "Emitter pin OFF");
-            this->emitter_pin_->digital_write(false); // OFF
-            for (int j = 0; j < 100; j++) delay(10);  // 1 second OFF (100 × 10ms)
-        }
-    }
-
-    static const int REPEAT_COUNT = 6;
+    // Example: toggle emitter 10 times with 100ms delay
+    toggle_emitter_pin(10, 100);
 
     // Build pulse vector
     auto DataVector = build_frame(this->address_, cmd, mode);
 
-    int repeat = 5;
-    for (int r = 0; r < repeat; r++) {
-      if (this->gdo0_pin_) {
-        for (int pulse : DataVector) {
-            bool level = (pulse > 0);
-            ESP_LOGD(TAG, "GDO0 pin %s for %d us", level ? "HIGH" : "LOW", abs(pulse));
-            this->gdo0_pin_->digital_write(level);
-            delayMicroseconds(abs(pulse));
+    for (int r = 0; r < REPEAT_COUNT; r++) {
+        if (this->gdo0_pin_) {
+            for (int pulse : DataVector) {
+                bool level = (pulse > 0);
+                ESP_LOGD(TAG, "GDO0 pin %s for %d us", level ? "HIGH" : "LOW", abs(pulse));
+                this->gdo0_pin_->digital_write(level);
+                delayMicroseconds(abs(pulse));  // Still blocking, no esphome::delayMicroseconds()
+            }
         }
-      }
     }
     ESP_LOGD(TAG, "send_command complete");
 
-    this->gdo0_pin_->digital_write(false);
-
-    delay(1000); // Add 1 second delay before transmitting DataVectorTest
-
-    ESP_LOGD(TAG, "send_command: static Raw");
-
-    for (int r = 0; r < repeat; r++) {
-      if (this->gdo0_pin_) {
-        for (int pulse : DataVectorTest) {
-            bool level = (pulse > 0);
-            ESP_LOGD(TAG, "GDO0 pin %s for %d us (static)", level ? "HIGH" : "LOW", abs(pulse));
-            this->gdo0_pin_->digital_write(level);
-            delayMicroseconds(abs(pulse));
-        }
-      }
+    if (this->gdo0_pin_) {
+        this->gdo0_pin_->digital_write(false);
     }
-
-    ESP_LOGD(TAG, "send_command: static Raw");
 }
 
 }  // namespace iris
