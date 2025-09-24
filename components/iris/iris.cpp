@@ -136,7 +136,6 @@ void IrisComponent::send_command(IrisCommand cmd, IrisMode mode) {
 
     ESP_LOGD(TAG, "send_command: static Raw");
 
-    int repeat = 5;
     for (int r = 0; r < repeat; r++) {
       if (this->cc1101_) {
         this->cc1101_->begin_tx();
